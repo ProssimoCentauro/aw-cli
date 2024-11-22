@@ -4,7 +4,7 @@ import concurrent.futures
 from pySmartDL import SmartDL
 from pathlib import Path
 from threading import Thread
-from awcli.utilities import * 
+from awcli.utilities import *
 from awcli.arg_parser import *
 import awcli.anilist as anilist
 
@@ -33,8 +33,9 @@ def fzf(elementi: list[str], prompt: str = "> ", cls: bool = False, esci: bool =
     string = "\n".join(elementi)
     comando = f"""fzf --tac --height={len(elementi) + 2} --cycle --ansi --tiebreak=begin --prompt="{prompt}" """
     output = os.popen(f"""printf "{string}" | {comando}""").read().strip()
-    
+
     if esci and output == "":
+        my_print("",end="", cls=True)
         safeExit()
 
     return output
@@ -51,7 +52,8 @@ def RicercaAnime() -> list[Anime]:
 
     def check_search(s: str):
         if s == "exit":
-            safeExit() 
+            my_print("",end="", cls=True)
+            safeExit()
         result = search(s)
         if len(result) != 0:
             return result
@@ -93,7 +95,7 @@ def scegliEpisodi() -> int:
         int: il numero dell'episodio da riprodurre.
     """
 
-    
+
     my_print(anime.name, cls=True)
     #se contiene solo 1 ep sarà riprodotto automaticamente
     if anime.ep == 1:
@@ -137,7 +139,7 @@ def scaricaEpisodio(ep: int, path: str):
 
     url_ep = anime.get_episodio(ep)
     nome_video = anime.ep_name(ep)
-    
+
     # se l'episodio non è ancora stato scaricato lo scarico, altrimenti skippo
     my_print(nome_video, color="blu", end=":\n")
     if not os.path.exists(f"{path}/{nome_video}.mp4"):
@@ -176,7 +178,7 @@ def openMPV(url_ep: str, nome_video: str):
     if (nome_os == "Android"):
         os.system(f'''am start --user 0 -a android.intent.action.VIEW -d "{url_ep}" -n is.xyz.mpv/.MPVActivity > /dev/null 2>&1''')
         return
-    
+
     os.system(f"{player_path} '{url_ep}' --force-media-title='{nome_video}' --fullscreen --keep-open > /dev/null 2>&1")
 
 
@@ -190,9 +192,9 @@ def openVLC(url_ep: str, nome_video: str):
     """
 
     if nome_os == "Android":
-        os.system(f'''am start --user 0 -a android.intent.action.VIEW -d "{url_ep}" -n org.videolan.vlc/.StartActivity -e "title" "{nome_video}" > /dev/null 2>&1''')    
+        os.system(f'''am start --user 0 -a android.intent.action.VIEW -d "{url_ep}" -n org.videolan.vlc/.StartActivity -e "title" "{nome_video}" > /dev/null 2>&1''')
         return
-    
+
     os.system(f"{player_path} '{url_ep}' --meta-title '{nome_video}' --fullscreen > /dev/null 2>&1")
 
 
@@ -211,19 +213,19 @@ def addToCronologia(ep: int):
     Args:
         ep (int): il numero dell'episodio visualizzato.
     """
-    
+
     #rimuovo l'anime dalla cronologia se è già presente
     for i, riga in enumerate(log):
         if riga[0] == anime.name:
             log.pop(i)
-            
-    #aggiungo l'anime alla cronologia con i nuovi dati    
+
+    #aggiungo l'anime alla cronologia con i nuovi dati
     if ep != anime.ep or anime.status == 0:
         temp = [anime.name, ep, anime.url, anime.ep_totali, anime.status, anime.ep, anime.id_anilist]
         if ep == anime.ep:
             log.append(temp)
         else:
-            log.insert(0, temp) 
+            log.insert(0, temp)
 
 
 def updateAnilist(ep: int, drop: bool = False):
@@ -237,23 +239,23 @@ def updateAnilist(ep: int, drop: bool = False):
         ep (int): il numero dell'episodio visualizzato.
         drop (bool, optional): True se l'utente decide di droppare l'anime, altrimenti False.
     """
-    
+
     if anime.id_anilist == 0:
         my_print("Impossibile aggiornare AniList: id anime non trovato!", color="rosso")
         return
-    
+
     voto = 0
     preferiti = False
     status_list = 'CURRENT'
-    
+
     if drop:
         status_list = 'DROPPED'
 
-    #se ho finito di vedere l'anime o lo stato è dropped    
+    #se ho finito di vedere l'anime o lo stato è dropped
     if (ep == anime.ep and anime.status == 1) or status_list == 'DROPPED':
         if status_list == 'CURRENT':
             status_list = 'COMPLETED'
-    
+
         #chiedo di votare
         if anilist.ratingAnilist:
             with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -271,13 +273,13 @@ def updateAnilist(ep: int, drop: bool = False):
                     my_print(f"Riproduco {anime.name} Ep. {anime.ep}", color="giallo", cls=True)
                     my_print(f"Inserisci un voto per l'anime (voto corrente: {voto_anilist}): ", end=" ", color="ciano", bg_color="ciano_bg")
                 voto = future_voto.result()
-    
+
         #chiedo di mettere tra i preferiti
         if anilist.preferitoAnilist and status_list == 'COMPLETED':
             my_print(f"Riproduco {anime.name} Ep. {anime.ep}", color="giallo", cls=True)
             preferiti = fzf(["sì","no"], "Mettere l'anime tra i preferiti? ")
-    
-    if preferiti: 
+
+    if preferiti:
         thread = Thread(target=anilist.addToAnilistFavourite, args=(anime.id_anilist, ep, voto))
     else:
         thread = Thread(target=anilist.addToAnilist, args=(anime.id_anilist, ep, status_list, voto))
@@ -298,7 +300,7 @@ def openVideos(ep: int):
     nome_video = anime.ep_name(ep)
     #se il video è già stato scaricato lo riproduco invece di farlo in streaming
     path = f"{downloadPath(create=False)}/{anime.name}/{nome_video}.mp4"
-    
+
     if os.path.exists(path):
         url_ep = "file://" + path if nome_os == "Android" else path
     elif offline:
@@ -323,7 +325,7 @@ def getCronologia() -> list[Anime]:
     Prende i dati dalla cronologia.
 
     Returns:
-        list[Anime]: la lista degli anime trovati 
+        list[Anime]: la lista degli anime trovati
 
     """
     animes = []
@@ -333,7 +335,7 @@ def getCronologia() -> list[Anime]:
         if len(riga) < 5:
             riga.append(0)
         if len(riga) < 6:
-            riga.append(riga[1])    
+            riga.append(riga[1])
         if len(riga) < 7:
             riga.append(0)
         a = Anime(name=riga[0], url=riga[2], ep=int(riga[5]), ep_totali=riga[3])
@@ -354,9 +356,9 @@ def setupConfig() -> None:
     Crea un file di configurazione chiamato "aw.config"
     nella stessa directory dello script.
     Le informazioni riportate saranno scelte dall'utente.
-    Sarà possibile scegliere il Player predefinito, 
-    se collegare il proprio profilo AniList e 
-    se inserire il path di syncplay.  
+    Sarà possibile scegliere il Player predefinito,
+    se collegare il proprio profilo AniList e
+    se inserire il path di syncplay.
     """
     try:
         #player predefinito
@@ -376,35 +378,35 @@ def setupConfig() -> None:
         ratingAnilist = "ratingAnilist: False"
         preferitoAnilist = "preferitoAnilist: False"
         dropAnilist = "dropAnilist: False"
-        
+
         if fzf(["sì","no"], "Aggiornare automaticamente la watchlist con AniList? ") == "sì":
             link = "https://anilist.co/api/v2/oauth/authorize?client_id=11388&response_type=token"
             if nome_os == "Linux" or nome_os == "Android":
                 os.system(f"xdg-open '{link}' > /dev/null 2>&1")
-            else: 
+            else:
                 os.system(f"open '{link}' > /dev/null 2>&1")
 
             #inserimento token
             anilist.tokenAnilist = my_input(f"Inserire il token di AniList ({link})", cls=True)
-            
+
             #prendo l'id dell'utente tramite query
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(anilist.getAnilistUserId)
                 my_print("AW-CLI - CONFIGURAZIONE", color="giallo", cls=True)
                 if fzf(["sì","no"], "Votare l'anime una volta completato? ") == "sì":
                     ratingAnilist = "ratingAnilist: True "
-                    
+
                 if fzf(["sì","no"], "Chiedere se mettere l'anime tra i preferiti una volta completato? ") == "sì":
                     preferitoAnilist = "preferitoAnilist: True"
-                
+
                 if fzf(["sì","no"], "Chiedere se droppare l'anime una volta rimosso dalla cronologia? ") == "sì":
                     dropAnilist = "dropAnilist: True"
-                
+
                 anilist.user_id = future.result()
 
         if nome_os == "Linux" and not wsl:
             syncplay= "syncplay"
-        elif nome_os == "Android": 
+        elif nome_os == "Android":
                 syncplay = "Syncplay: None"
         else:
             syncplay = my_input(f"Inserisci il path di Syncplay{stringa_wsl} (premere INVIO se non lo si desidera utilizzare)")
@@ -431,10 +433,10 @@ def reloadCrono(cronologia: list[Anime]):
     """
     global scelta_anime
     global notSelected
-    
+
     if 0 not in [anime.status for anime in cronologia]:
         return
-    
+
     my_print("Ricerco le nuove uscite...", color="giallo")
     ultime_uscite = latest()
     my_print(end="", cls=True)
@@ -444,29 +446,29 @@ def reloadCrono(cronologia: list[Anime]):
         colore = 1 #2 verde, 1 rosso
         if a.status == 1 or a.ep_corrente < a.ep:
             colore = 2
-        else:    
+        else:
             for anime_latest in ultime_uscite:
                 if a.name == anime_latest.name and a.ep_corrente < anime_latest.ep:
                     log[i][5] = anime_latest.ep
                     colore = 2
                     break
         testo.append(f"\033[0;3{colore}m{i + 1}  \033[0;37m{a.name} [Ep {a.ep_corrente}/{a.ep_totali}]")
-    
+
     if notSelected:
         pid = os.popen("pgrep fzf").read().strip().split("\n")
         os.system(f"kill {pid[len(pid) - 1]}")
         scelta_anime = fzf(testo, "Scegli un anime: ")
 
 
-def listAnimeNames(animelist: list[Anime]) -> list[str]: 
+def listAnimeNames(animelist: list[Anime]) -> list[str]:
     """
-    Genera una lista di stringhe formattate con i 
+    Genera una lista di stringhe formattate con i
     nomi degli anime presenti nella lista desiderata.
 
     Args:
-        animelist (list[Anime]): Una lista Anime.    
+        animelist (list[Anime]): Una lista Anime.
 
-    Return: 
+    Return:
         str: lista di stringhe formattate.
     """
 
@@ -478,17 +480,17 @@ def listAnimeNames(animelist: list[Anime]) -> list[str]:
             colore = 1
             if a.status == 1 or a.ep_corrente < a.ep:
                 colore = 2
-        
+
         nome = f"\033[0;3{colore}m{i + 1}  \033[0;37m"
 
         if cronologia:
             nome += f"{a.name} [Ep {a.ep_corrente}/{a.ep_totali}]"
         elif lista:
-            nome += f"{a.name} [Ep {a.ep}]" 
+            nome += f"{a.name} [Ep {a.ep}]"
         else:
             nome += f"{a.name}"
         nomi.append(nome)
-        
+
     return nomi
 
 
@@ -524,12 +526,13 @@ def removeFromCrono(number: int):
         scelta = fzf(["esci","continua"], cls=True)
 
         if scelta == "esci":
+            my_print("",end="", cls=True)
             safeExit()
 
 
 def updateScript():
     """
-    Aggiorna di default il programma in base 
+    Aggiorna di default il programma in base
     all'ultima versione stabile.
     Se viene specificato il branch,
     verrà installato quest'ultimo.
@@ -537,11 +540,11 @@ def updateScript():
 
     if args.update == None:
         comando = "echo y | python3 -m pip uninstall aw-cli > /dev/null 2>&1 && python3 -m pip install aw-cli > /dev/null 2>&1"
-    else: 
+    else:
         comando = f"echo y | python3 -m pip uninstall aw-cli > /dev/null 2>&1 && python3 -m pip install git+https://github.com/fexh10/aw-cli.git@{args.update} > /dev/null 2>&1"
 
     os.system(comando)
-    
+
     my_print("aw-cli aggiornato con successo!", color="bianco")
     exit()
 
@@ -570,7 +573,7 @@ def main():
             log = [riga for riga in csv.reader(file)]
     except FileNotFoundError:
         pass
-    
+
     #se il file di configurazione non esiste viene chiesto all'utente di fare il setup
     if args.avvia_config or not os.path.exists(f"{os.path.dirname(__file__)}/aw.config"):
         setupConfig()
@@ -583,7 +586,7 @@ def main():
         setupConfig()
         mpv, player_path, syncplay_path = getConfig()
 
-   
+
     openPlayer = openMPV if mpv else openVLC
 
     if nome_os != "Android" and args.syncpl:
@@ -599,17 +602,17 @@ def main():
                 animelist = animeScaricati(downloadPath())
             else:
                 animelist = RicercaAnime()
-                
+
             while True:
                 my_print("", end="", cls=True)
                 esci = True
                 if cronologia and args.cronologia != 'r':
-                    notSelected = True 
-                    thread = Thread(target=reloadCrono, args=[animelist])    
+                    notSelected = True
+                    thread = Thread(target=reloadCrono, args=[animelist])
                     thread.start()
                     esci = False
-                
-                prompt = "Rimuovi un anime: " if args.cronologia == 'r' else "Scegli un anime: "                
+
+                prompt = "Rimuovi un anime: " if args.cronologia == 'r' else "Scegli un anime: "
                 scelta_anime = fzf(listAnimeNames(animelist), prompt, esci=esci)
                 notSelected = False
                 if cronologia and args.cronologia != 'r' and thread.is_alive:
@@ -617,7 +620,7 @@ def main():
                         if scelta_anime == "":
                             thread.join()
                             if scelta_anime == "":
-                                safeExit()                        
+                                safeExit()
 
                 scelta = int(scelta_anime.split("  ")[0]) - 1
 
@@ -626,7 +629,7 @@ def main():
                     removeFromCrono(scelta)
                     animelist = getCronologia()
                     continue
-                
+
                 anime = animelist[scelta]
                 #se la lista è stata selezionata, inserisco come ep_iniziale quello scelto dall'utente
                 #succcessivamente anime.ep verrà sovrascritto con il numero reale dell'episodio finale
@@ -653,8 +656,8 @@ def main():
             #se ho l'args -i e ho scelto di tornare indietro, faccio una continue sul ciclo while True
             if scelta_info == "indietro":
                 continue
-            
-            if cronologia:            
+
+            if cronologia:
                 ep_iniziale = anime.ep_corrente + 1
                 if ep_iniziale > anime.ep:
                     my_print(f"L'episodio {ep_iniziale} di {anime.name} non è ancora stato rilasciato!", color='rosso')
@@ -666,7 +669,7 @@ def main():
                 ep_iniziale = scegliEpisodi()
                 if not downl:
                     break
-                
+
                 if downl:
                     path = f"{downloadPath()}/{anime.name}"
                     scaricaEpisodio(ep_iniziale, path)
@@ -676,18 +679,19 @@ def main():
                         my_print("Movies/Anime\n", color="verde")
                     else:
                         my_print("Video/Anime\n", color="verde")
-                        
+
                         risp = fzf(["esci","indietro","guarda","continua"])
                         if risp == "esci":
+                            my_print("",end="", cls=True)
                             safeExit()
                         elif risp == "guarda":
-                            break   
+                            break
                         elif risp == "continua":
                             continue
                         elif risp == "indietro":
                             scelta_download = True
                             break
-            
+
             if scelta_download:
                 scelta_download = False
                 continue
@@ -714,14 +718,14 @@ def main():
                     lista_menu.append("prossimo")
                 else:
                     prossimo = False
-        
+
                 scelta_menu = fzf(lista_menu)
 
                 if scelta_menu == "prossimo" and prossimo:
                     ep_iniziale += 1
                     continue
                 elif scelta_menu == "riguarda":
-                    continue            
+                    continue
                 elif scelta_menu == "antecedente" and antecedente:
                     ep_iniziale -= 1
                     continue
@@ -730,6 +734,7 @@ def main():
                 elif scelta_menu == "indietro":
                     break
                 elif scelta_menu == "esci":
+                    my_print("",end="", cls=True)
                     safeExit()
 
         except KeyboardInterrupt:
